@@ -189,7 +189,7 @@ function extractTaskDescription() {
                     });
 
             } else {
-                var description = 'unknown';
+                var description = '(unknown)';
                 return Promise.resolve(description);
             }
         });
@@ -260,6 +260,8 @@ document.addEventListener('DOMContentLoaded', function () {
     getCurrentTimeEntry()
         .then(function (entry) {
             var messageElement = document.getElementById('current');
-            messageElement.innerHTML = entry.description;
+            var description = entry.description ? entry.description : '(no description)';
+
+            messageElement.innerHTML = description;
         });
 });
