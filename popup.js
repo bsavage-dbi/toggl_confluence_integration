@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+const chromep = new ChromePromise();
+
 /**
  * Get the current URL.
  *
@@ -64,6 +66,21 @@ function changeBackgroundColor(color) {
   });
 }
 
+function selectJiraSummary(){
+    console.log('Tab script:');
+    return document.getElementById('summary-val').value;
+}
+
+function retrieveJiraSummary(){
+    chrome.tabs.executeScript({
+        code: '(' + selectJiraSummary + ')();' //argument here is a string but function.toString() returns function's code
+    }, (results) => {
+        //Here we have just the innerHTML and not DOM structure
+        console.log('Popup script:')
+        console.log(results[0]);
+    });
+}
+
 /**
  * Gets the saved background color for url.
  *
@@ -96,25 +113,23 @@ function saveBackgroundColor(url, color) {
 }
 
 function saveApiToken(){
-	var tokenInput = document.getElementById('personalApiKey');
-	alert('Saving token: ' + tokenInput.value);
-	chrome.storage.sync.set({"token": tokenInput.value});
-	
-	chrome.storage.sync.get("token", (res) => {
-		alert('Saved token: ' + res.token);
-	  });
+	var token = document.getElementById('personalApiKey').value;
+
+    chromep.storage.sync.set({"token": token})
+        .then(function () {console.log('Saved token: ' + token)  });
 }
 
-function getAuthorizationHeader(callback){
-	chrome.storage.sync.get("token", (res) => {
-		callback("Basic "+ btoa(res.token+':api_token'));
-	  });
+function getAuthorizationHeader() {
+    return chromep.storage.sync.get("token")
+        .then(function (res) {
+            return "Basic " + btoa(res.token + ':api_token');
+        });
 }
 
-function setAuthorizationHeader(xhr){
-	getAuthorizationHeader((headerValue)=> {
-		xhr.setRequestHeader("Authorization", headerValue);
-	});	
+function setAuthorizationHeader(xhr) {
+    return getAuthorizationHeader().then(function (headerValue) {
+        xhr.setRequestHeader("Authorization", headerValue);
+    });
 }
 
 function startTimer() {
@@ -122,28 +137,29 @@ function startTimer() {
 	var xhr = new XMLHttpRequest();
 	xhr.open("POST", "https://www.toggl.com/api/v8/time_entries/start", true);	
 	xhr.setRequestHeader("Content-type", "application/json");
-	setAuthorizationHeader(xhr)
-	
-	xhr.onreadystatechange = function() {
-		
-	  if (xhr.readyState == 4) {
-		var messageElement = document.getElementById('userMsg');
-		messageElement.innerHTML = 'Timer started! ' + JSON.parse(xhr.responseText).data.description;
-	  }
-	};
-	getCurrentTabUrl((url) => {		
-		lookUpProject((pid) => {
-			var body = {
-				"time_entry": {
-					"description": extractTaskDescription(url),
-					"created_with": "chrome ext",
-					"pid": pid,
-				}
-			};
-			//alert('sending body:' +body);
-			xhr.send(JSON.stringify(body));	
-		});		
-	});
+	setAuthorizationHeader(xhr).then(function(){
+
+        xhr.onreadystatechange = function() {
+
+          if (xhr.readyState == 4) {
+            var messageElement = document.getElementById('userMsg');
+            messageElement.innerHTML = 'Timer started! ' + JSON.parse(xhr.responseText).data.description;
+          }
+        };
+        getCurrentTabUrl((url) => {
+            lookUpProject((pid) => {
+                var body = {
+                    "time_entry": {
+                        "description": extractTaskDescription(url),
+                        "created_with": "chrome ext",
+                        "pid": pid,
+                    }
+                };
+                //alert('sending body:' +body);
+                xhr.send(JSON.stringify(body));
+            });
+        });
+    });
 }
 
 function lookUpProject(callback){
@@ -151,30 +167,30 @@ function lookUpProject(callback){
 		var xhr = new XMLHttpRequest();
 		xhr.open("GET", "https://www.toggl.com/api/v8/workspaces/"+wid+"/projects", true);	
 		
-		setAuthorizationHeader(xhr);
-		xhr.onreadystatechange = function() {
-			
-		  if (xhr.readyState == 4) {
-			var projects = JSON.parse(xhr.responseText);
-			//alert('found projects:' + projects);
-			
-			getCurrentTabUrl((url) => {
-				var currentProjectName = extractProjectName(url);
-				if(currentProjectName){
-					
-					var filtered = projects.filter((project) => {
-						return currentProjectName.toLowerCase() == project.name.toLowerCase();
-					});
-					if(filtered.length==0){
-						alert('No Project found in toggle with name: '+ currentProjectName);
-					}else{
-						callback(filtered[0].id);
-					}
-				}
-			});	
-		  }
-		};	
-		xhr.send();
+		setAuthorizationHeader(xhr).then(function(){
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    var projects = JSON.parse(xhr.responseText);
+                    //alert('found projects:' + projects);
+
+                    getCurrentTabUrl((url) => {
+                        var currentProjectName = extractProjectName(url);
+                        if(currentProjectName){
+
+                            var filtered = projects.filter((project) => {
+                                return currentProjectName.toLowerCase() == project.name.toLowerCase();
+                            });
+                            if(filtered.length==0){
+                                alert('No Project found in toggle with name: '+ currentProjectName);
+                            }else{
+                                callback(filtered[0].id);
+                            }
+                        }
+                    });
+                }
+            };
+            xhr.send();
+        });
 	} );		
 	
 }
@@ -196,6 +212,7 @@ function extractTaskDescription(url){
 	if(url.indexOf('https://confluence.fluidda.com/display/') !== -1){
 		return url.split('/')[5];
 	}else if(url.indexOf('https://jira.fluidda.com/browse/') !== -1){
+        //selectJiraSummary();
 		return url.split('/')[4];
 	}else{
 		return null;
@@ -206,14 +223,14 @@ function getCurrentTimeEntry(callback) {
 	
 	var xhr = new XMLHttpRequest();
 	xhr.open("GET", "https://www.toggl.com/api/v8/time_entries/current", true);	
-	setAuthorizationHeader(xhr);
-	xhr.onreadystatechange = function() {		
-		if (xhr.readyState == 4) {		  
-			callback(JSON.parse(xhr.responseText).data);		
-		}
-	};	
-	xhr.send();
-	
+	setAuthorizationHeader(xhr).then(function(){
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState == 4) {
+                callback(JSON.parse(xhr.responseText).data);
+            }
+        };
+        xhr.send();
+    });
 }
 
 function getWorkspaceId(callback) {
