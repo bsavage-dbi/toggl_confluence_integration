@@ -44,17 +44,18 @@ function changeBackgroundColor(color) {
 }
 
 function selectJiraSummary(){
-    console.log('Tab script:');
-    return document.getElementById('summary-val').value;
+    var summary = document.getElementById('summary-val').innerText;
+    console.log('Tab script: ' + summary);
+    return summary;
 }
 
 function retrieveJiraSummary(){
-    chrome.tabs.executeScript({
+    return chromep.tabs.executeScript({
         code: '(' + selectJiraSummary + ')();' //argument here is a string but function.toString() returns function's code
-    }, (results) => {
+    }).then(function (results) {
         //Here we have just the innerHTML and not DOM structure
-        console.log('Popup script:')
-        console.log(results[0]);
+        console.log('Popup script:' + results[0]);
+        return results[0];
     });
 }
 
@@ -105,14 +106,14 @@ function getAuthorizationHeader() {
 
 function startTimer() {
     var authorizationHeaderPromise = getAuthorizationHeader();
-    var currentTabUrlPromise = getCurrentTabUrl();
     var projectIdPromise = lookUpProject();
+    var taskDescriptionPromise = extractTaskDescription();
 
-    Promise.all([currentTabUrlPromise, projectIdPromise, authorizationHeaderPromise])
+    Promise.all([taskDescriptionPromise, projectIdPromise, authorizationHeaderPromise])
         .then(function(values) {
             console.log('Promise returned: ' + values);
 
-            var url = values[0];
+            var taskDescription = values[0];
             var pid = values[1];
             var headerValue = values[2];
 
@@ -125,7 +126,7 @@ function startTimer() {
                 xhr.onerror = reject;
                 var body = {
                     "time_entry": {
-                        "description": extractTaskDescription(url),
+                        "description": taskDescription,
                         "created_with": "chrome ext",
                         "pid": pid,
                     }
@@ -210,15 +211,25 @@ function extractProjectName(url){
 	}
 }
 
-function extractTaskDescription(url){
-	if(url.indexOf('https://confluence.fluidda.com/display/') !== -1){
-		return url.split('/')[5];
-	}else if(url.indexOf('https://jira.fluidda.com/browse/') !== -1){
-        //selectJiraSummary();
-		return url.split('/')[4];
-	}else{
-		return null;
-	}
+function extractTaskDescription(){
+    return getCurrentTabUrl()
+        .then(function (url) {
+            if(url.indexOf('https://confluence.fluidda.com/display/') !== -1){
+                return new Promise(url.split('/')[5]);
+            }else if(url.indexOf('https://jira.fluidda.com/browse/') !== -1){
+                return retrieveJiraSummary()
+                    .then(function (summary) {
+                        var description = url.split('/')[4];
+                        if (summary) {
+                            description = description + ': ' + summary;
+                        }
+                        return description;
+                    });
+
+            }else{
+                return new Promise('');
+            }
+        });
 }
 
 function getCurrentTimeEntry() {
