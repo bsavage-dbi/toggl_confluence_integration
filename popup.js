@@ -64,40 +64,48 @@ function startTimer() {
     var authorizationHeaderPromise = getAuthorizationHeader();
     var projectIdPromise = lookUpProject();
     var taskDescriptionPromise = extractTaskDescription();
+    var currentTimeEntryPromise = getCurrentTimeEntry();
 
-    Promise.all([taskDescriptionPromise, projectIdPromise, authorizationHeaderPromise])
+    Promise.all([taskDescriptionPromise, projectIdPromise, authorizationHeaderPromise, currentTimeEntryPromise])
         .then(function (values) {
             console.log('Promise returned: ' + values);
 
             var taskDescription = values[0];
             var pid = values[1];
             var headerValue = values[2];
+            var currentTimeEntry = values[3];
 
-            new Promise(function (resolve, reject) {
-                var xhr = new XMLHttpRequest();
-                xhr.open("POST", "https://www.toggl.com/api/v8/time_entries/start", true);
-                xhr.setRequestHeader("Authorization", headerValue);
-                xhr.setRequestHeader("Content-type", "application/json");
-                xhr.onload = resolve;
-                xhr.onerror = reject;
-                var body = {
-                    "time_entry": {
-                        "description": taskDescription,
-                        "created_with": "chrome ext",
-                        "pid": pid,
-                    }
-                };
-                xhr.send(JSON.stringify(body));
-
-            }).then(function (e) {
-                console.log('start start success: ' + e.target.response);
-                return JSON.parse(e.target.response).data
-            }, function (e) {
-                console.log('start start error: ' + e);
-            }).then(function (timeEntry) {
+            if(taskDescription === currentTimeEntry.description && pid === currentTimeEntry.pid){
                 var messageElement = document.getElementById('userMsg');
-                messageElement.innerHTML = 'Timer started! ' + timeEntry.description;
-            });
+                messageElement.innerHTML = 'Timer already started! ' + taskDescription;
+            }else{
+
+                new Promise(function (resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", "https://www.toggl.com/api/v8/time_entries/start", true);
+                    xhr.setRequestHeader("Authorization", headerValue);
+                    xhr.setRequestHeader("Content-type", "application/json");
+                    xhr.onload = resolve;
+                    xhr.onerror = reject;
+                    var body = {
+                        "time_entry": {
+                            "description": taskDescription,
+                            "created_with": "chrome ext",
+                            "pid": pid,
+                        }
+                    };
+                    xhr.send(JSON.stringify(body));
+
+                }).then(function (e) {
+                    console.log('start start success: ' + e.target.response);
+                    return JSON.parse(e.target.response).data
+                }, function (e) {
+                    console.log('start start error: ' + e);
+                }).then(function (timeEntry) {
+                    var messageElement = document.getElementById('userMsg');
+                    messageElement.innerHTML = 'Timer started! ' + timeEntry.description;
+                });
+            }
         });
 }
 
