@@ -196,17 +196,23 @@ function extractTaskDescription(url){
 	}
 }
 
-function getCurrentTimeEntry(callback) {
-	
-	var xhr = new XMLHttpRequest();
-	xhr.open("GET", "https://www.toggl.com/api/v8/time_entries/current", true);	
-	setAuthorizationHeader(xhr).then(function(){
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState == 4) {
-                callback(JSON.parse(xhr.responseText).data);
-            }
-        };
-        xhr.send();
+function getCurrentTimeEntry() {
+    return getAuthorizationHeader()
+        .then(function (headerValue) {
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", "https://www.toggl.com/api/v8/time_entries/current");
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.onload = resolve;
+                xhr.onerror = reject;
+                xhr.send();
+            });
+        }
+    ).then(function (e) {
+        console.log('succes: '+e.target.response);
+        return JSON.parse(e.target.response).data
+    }, function (e) {
+        console.log('error: '+e);
     });
 }
 
@@ -214,9 +220,12 @@ function getWorkspaceId(callback) {
 	chrome.storage.sync.get("wid", function(data) {
 		if (typeof data.wid === 'undefined') {
 			alert('Not found in local storage')
-			getCurrentTimeEntry((entry) => {
-			var workspaceId = entry.wid;
-			chrome.storage.sync.set({"wid": workspaceId});
+			getCurrentTimeEntry()
+                .then(function(entry){
+                    if(entry){
+                        var workspaceId = entry.wid;
+                        chromep.storage.sync.set({"wid": workspaceId});
+                    }
 				} );
 			//alert('found wid:' + workspaceId);
 			
@@ -254,8 +263,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 	});
 	
-	getCurrentTimeEntry((entry) => {
-		var messageElement = document.getElementById('userMsg');
-		messageElement.innerHTML = entry.description;
-	});
+	getCurrentTimeEntry()
+        .then(function(entry){
+            var messageElement = document.getElementById('userMsg');
+            messageElement.innerHTML = entry.description;
+        });
 });
