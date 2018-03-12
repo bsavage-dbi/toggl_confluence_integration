@@ -75,7 +75,7 @@ function startTimer() {
             var headerValue = values[2];
             var currentTimeEntry = values[3];
 
-            if(taskDescription === currentTimeEntry.description && pid === currentTimeEntry.pid){
+            if(currentTimeEntry && taskDescription === currentTimeEntry.description && pid === currentTimeEntry.pid){
                 var currentElement = document.getElementById('current');
                 var messageElement = document.getElementById('userMsg');
                 currentElement.innerHTML = taskDescription;
@@ -156,13 +156,18 @@ function lookUpProject() {
                         return currentProjectName.toLowerCase() == project.name.toLowerCase();
                     });
                 if (filtered.length == 0) {
-                    console.log('No Project found in toggle with name: ' + currentProjectName);
-                    return false;
+                    var reason = 'No Project found in toggle with name: ' + currentProjectName;
+                    var messageElement = document.getElementById('userMsg');
+                    messageElement.innerHTML = reason;
+                    return Promise.reject(reason);
                 } else {
                     return filtered[0].id;
                 }
             }
-            return false;
+            var reason = 'Could not extract project name';
+            var messageElement = document.getElementById('userMsg');
+            messageElement.innerHTML = reason;
+            return Promise.reject(reason);
         });
 }
 
