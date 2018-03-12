@@ -49,7 +49,7 @@ function saveApiToken() {
 
     chromep.storage.sync.set({"token": token})
         .then(function () {
-            console.log('Saved token: ' + token)
+            alert('Saved token: ' + token)
         });
 }
 
@@ -183,7 +183,7 @@ function extractTaskDescription() {
                     });
 
             } else {
-                return new Promise('');
+                return new Promise('unknown');
             }
         });
 }

@@ -34,24 +34,19 @@
       <script src="popup.js"></script>
 	
   </head>
-
-  <body>
-    <h1>Toggl-Confluence Integration</h1>
-    <div id="container">
-	  <div id="userMsg">No timer is running!</div>
-      <div>
-		<span>Toggl personal API key</span>
-		<input type="text" name="personalApiKey" id="personalApiKey" placeholder="Paste key here..."/>
-		<button id="saveKey">Save</button>
-	  </div>
-	  <div>
-		<span>Workspace ID</span>
-		<input type="text" name="workspaceId" id="workspaceId" placeholder="" readonly="true"/>
-	  </div>
-	  <div>
-		<button id="startTimer">Start Timer</button>
-	  </div>
-    </div>
-	<script src="popup.js"></script>
-  </body>
+    <body>
+        <h1>Toggl-Confluence Integration</h1>
+        <div id="container">
+            <div id="userMsg">No timer is running!</div>
+            <div>
+                <button id="startTimer">Start Timer</button>
+            </div>
+            <hr/>
+            <div>
+                <span>Toggl personal API key</span>
+                <input type="text" name="personalApiKey" id="personalApiKey" placeholder="Paste key here..."/>
+                <button id="saveKey">Save</button>
+            </div>
+        </div>
+    </body>
 </html>
