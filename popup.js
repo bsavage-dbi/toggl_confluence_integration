@@ -76,8 +76,10 @@ function startTimer() {
             var currentTimeEntry = values[3];
 
             if(taskDescription === currentTimeEntry.description && pid === currentTimeEntry.pid){
+                var currentElement = document.getElementById('current');
                 var messageElement = document.getElementById('userMsg');
-                messageElement.innerHTML = 'Timer already started! ' + taskDescription;
+                currentElement.innerHTML = taskDescription;
+                messageElement.innerHTML = 'Timer already started!';
             }else{
 
                 new Promise(function (resolve, reject) {
@@ -102,8 +104,10 @@ function startTimer() {
                 }, function (e) {
                     console.log('start start error: ' + e);
                 }).then(function (timeEntry) {
+                    var currentElement = document.getElementById('current');
                     var messageElement = document.getElementById('userMsg');
-                    messageElement.innerHTML = 'Timer started! ' + timeEntry.description;
+                    currentElement.innerHTML = timeEntry.description;
+                    messageElement.innerHTML = 'Timer started!';
                 });
             }
         });
@@ -179,7 +183,8 @@ function extractTaskDescription() {
     return getCurrentTabUrl()
         .then(function (url) {
             if (url.indexOf('https://confluence.fluidda.com/display/') !== -1) {
-                return new Promise(url.split('/')[5]);
+                var description = url.split('/')[5];
+                return Promise.resolve(description);
             } else if (url.indexOf('https://jira.fluidda.com/browse/') !== -1) {
                 return retrieveJiraSummary()
                     .then(function (summary) {
@@ -191,7 +196,8 @@ function extractTaskDescription() {
                     });
 
             } else {
-                return new Promise('unknown');
+                var description = 'unknown';
+                return Promise.resolve(description);
             }
         });
 }
@@ -260,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     getCurrentTimeEntry()
         .then(function (entry) {
-            var messageElement = document.getElementById('userMsg');
+            var messageElement = document.getElementById('current');
             messageElement.innerHTML = entry.description;
         });
 });
