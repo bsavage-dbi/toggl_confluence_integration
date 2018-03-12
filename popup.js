@@ -140,7 +140,7 @@ function startTimer() {
 }
 
 function lookUpProject(callback){
-	getWorkspaceId((wid) => {
+	getWorkspaceId().then( function(wid){
 		var xhr = new XMLHttpRequest();
 		xhr.open("GET", "https://www.toggl.com/api/v8/workspaces/"+wid+"/projects", true);	
 		
@@ -216,24 +216,21 @@ function getCurrentTimeEntry() {
     });
 }
 
-function getWorkspaceId(callback) {
-	chrome.storage.sync.get("wid", function(data) {
+function getWorkspaceId() {
+	return chromep.storage.sync.get("wid").then(function(data) {
 		if (typeof data.wid === 'undefined') {
 			alert('Not found in local storage')
-			getCurrentTimeEntry()
+			return getCurrentTimeEntry()
                 .then(function(entry){
                     if(entry){
                         var workspaceId = entry.wid;
                         chromep.storage.sync.set({"wid": workspaceId});
                     }
+                    return workspaceId;
 				} );
-			//alert('found wid:' + workspaceId);
-			
-			callback(workspaceId);						
-			
 		} else {
 			//alert('Found in local storage')
-			callback(data.wid);
+            return data.wid;
 		}
 	});	
 }
@@ -257,7 +254,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		saveTokenButton.addEventListener('click', saveApiToken); 
 		
 		var workspaceIdInput = document.getElementById('workspaceId');
-		getWorkspaceId((wid) => {
+		getWorkspaceId()
+            .then(function(wid){
 				workspaceIdInput.value = wid;					
 			} );		
 		
