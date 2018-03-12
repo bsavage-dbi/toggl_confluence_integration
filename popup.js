@@ -103,28 +103,26 @@ function getAuthorizationHeader() {
         });
 }
 
-function setAuthorizationHeader(xhr) {
-    return getAuthorizationHeader().then(function (headerValue) {
-        xhr.setRequestHeader("Authorization", headerValue);
-    });
-}
-
 function startTimer() {
-	//alert("Hello, world!1");
-	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "https://www.toggl.com/api/v8/time_entries/start", true);	
-	xhr.setRequestHeader("Content-type", "application/json");
-	setAuthorizationHeader(xhr).then(function(){
+    var authorizationHeaderPromise = getAuthorizationHeader();
+    var currentTabUrlPromise = getCurrentTabUrl();
+    var projectIdPromise = lookUpProject();
 
-        xhr.onreadystatechange = function() {
+    Promise.all([currentTabUrlPromise, projectIdPromise, authorizationHeaderPromise])
+        .then(function(values) {
+            console.log('Promise returned: ' + values);
 
-          if (xhr.readyState == 4) {
-            var messageElement = document.getElementById('userMsg');
-            messageElement.innerHTML = 'Timer started! ' + JSON.parse(xhr.responseText).data.description;
-          }
-        };
-        getCurrentTabUrl().then(function (url) {
-            lookUpProject().then(function(pid){
+            var url = values[0];
+            var pid = values[1];
+            var headerValue = values[2];
+
+            new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "https://www.toggl.com/api/v8/time_entries/start", true);
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.setRequestHeader("Content-type", "application/json");
+                xhr.onload = resolve;
+                xhr.onerror = reject;
                 var body = {
                     "time_entry": {
                         "description": extractTaskDescription(url),
@@ -132,11 +130,18 @@ function startTimer() {
                         "pid": pid,
                     }
                 };
-                //alert('sending body:' +body);
                 xhr.send(JSON.stringify(body));
+
+            }).then(function (e) {
+                console.log('start start success: ' + e.target.response);
+                return JSON.parse(e.target.response).data
+            }, function (e) {
+                console.log('start start error: ' + e);
+            }).then(function (timeEntry) {
+                var messageElement = document.getElementById('userMsg');
+                messageElement.innerHTML = 'Timer started! ' + timeEntry.description;
             });
         });
-    });
 }
 
 function lookUpProject(){
@@ -158,10 +163,10 @@ function lookUpProject(){
                 xhr.onerror = reject;
                 xhr.send();
             }).then(function (e) {
-                console.log('succes: '+e.target.response);
+                console.log('lookUpProject succes: '+e.target.response);
                 return JSON.parse(e.target.response)
             }, function (e) {
-                console.log('error: '+e);
+                console.log('lookUpProject error: '+e);
             });
 
         });
@@ -229,10 +234,10 @@ function getCurrentTimeEntry() {
             });
         }
     ).then(function (e) {
-        console.log('succes: '+e.target.response);
+        console.log('getCurrentTimeEntry succes: '+e.target.response);
         return JSON.parse(e.target.response).data
     }, function (e) {
-        console.log('error: '+e);
+        console.log('getCurrentTimeEntry error: '+e);
     });
 }
 
@@ -263,26 +268,23 @@ function getWorkspaceId() {
 // to a document's origin. Also, using chrome.storage.sync instead of
 // chrome.storage.local allows the extension data to be synced across multiple
 // user devices.
-document.addEventListener('DOMContentLoaded', () => {  
-  
-    getCurrentTabUrl()
-        .then(function (url) {
+document.addEventListener('DOMContentLoaded', function(){
 
-            var timerButton = document.getElementById('startTimer');
-            timerButton.addEventListener('click', startTimer);
+    var timerButton = document.getElementById('startTimer');
+    timerButton.addEventListener('click', startTimer);
 
-            var saveTokenButton = document.getElementById('saveKey');
-            saveTokenButton.addEventListener('click', saveApiToken);
+    var saveTokenButton = document.getElementById('saveKey');
+    saveTokenButton.addEventListener('click', saveApiToken);
 
-            var workspaceIdInput = document.getElementById('workspaceId');
-            getWorkspaceId()
-                .then(function(wid){
-                    workspaceIdInput.value = wid;
-                } );
+    var workspaceIdInput = document.getElementById('workspaceId');
+    getWorkspaceId()
+        .then(function(wid){
+            workspaceIdInput.value = wid;
+        } );
 
-        });
-	
-	getCurrentTimeEntry()
+
+
+    getCurrentTimeEntry()
         .then(function(entry){
             var messageElement = document.getElementById('userMsg');
             messageElement.innerHTML = entry.description;
