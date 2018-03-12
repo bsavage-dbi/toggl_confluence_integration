@@ -124,7 +124,7 @@ function startTimer() {
           }
         };
         getCurrentTabUrl().then(function (url) {
-            lookUpProject((pid) => {
+            lookUpProject().then(function(pid){
                 var body = {
                     "time_entry": {
                         "description": extractTaskDescription(url),
@@ -139,37 +139,57 @@ function startTimer() {
     });
 }
 
-function lookUpProject(callback){
-	getWorkspaceId().then( function(wid){
-		var xhr = new XMLHttpRequest();
-		xhr.open("GET", "https://www.toggl.com/api/v8/workspaces/"+wid+"/projects", true);	
-		
-		setAuthorizationHeader(xhr).then(function(){
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState == 4) {
-                    var projects = JSON.parse(xhr.responseText);
-                    //alert('found projects:' + projects);
+function lookUpProject(){
+    var authorizationHeaderPromise = getAuthorizationHeader();
+    var workspaceIdPromise = getWorkspaceId();
 
-                    getCurrentTabUrl().then(function (url) {
-                        var currentProjectName = extractProjectName(url);
-                        if(currentProjectName){
+    var projectsPromise = Promise.all([authorizationHeaderPromise, workspaceIdPromise])
+        .then(function(values) {
+            console.log('Promise returned: '+values);
 
-                            var filtered = projects.filter((project) => {
-                                return currentProjectName.toLowerCase() == project.name.toLowerCase();
-                            });
-                            if(filtered.length==0){
-                                alert('No Project found in toggle with name: '+ currentProjectName);
-                            }else{
-                                callback(filtered[0].id);
-                            }
-                        }
-                    });
-                }
-            };
-            xhr.send();
+            var headerValue = values[0];
+            var wid = values[1];
+
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", "https://www.toggl.com/api/v8/workspaces/"+wid+"/projects", true);
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.onload = resolve;
+                xhr.onerror = reject;
+                xhr.send();
+            }).then(function (e) {
+                console.log('succes: '+e.target.response);
+                return JSON.parse(e.target.response)
+            }, function (e) {
+                console.log('error: '+e);
+            });
+
         });
-	} );		
-	
+    var currentTabUrlPromise = getCurrentTabUrl();
+
+    return Promise.all([projectsPromise, currentTabUrlPromise])
+        .then(function(values) {
+            console.log('Promise returned: '+values);
+
+            var projects = values[0];
+            var url = values[1];
+
+            var currentProjectName = extractProjectName(url);
+            if(currentProjectName){
+
+                var filtered = projects
+                    .filter(function(project){
+                        return currentProjectName.toLowerCase() == project.name.toLowerCase();
+                    });
+                if(filtered.length==0){
+                    console.log('No Project found in toggle with name: '+ currentProjectName);
+                    return false;
+                }else{
+                    return filtered[0].id;
+                }
+            }
+            return false;
+        });
 }
 
 function extractProjectName(url){
@@ -245,21 +265,22 @@ function getWorkspaceId() {
 // user devices.
 document.addEventListener('DOMContentLoaded', () => {  
   
-	getCurrentTabUrl().then(function (url) {
-	  
-		var timerButton = document.getElementById('startTimer');
-		timerButton.addEventListener('click', startTimer); 
-		
-		var saveTokenButton = document.getElementById('saveKey');
-		saveTokenButton.addEventListener('click', saveApiToken); 
-		
-		var workspaceIdInput = document.getElementById('workspaceId');
-		getWorkspaceId()
-            .then(function(wid){
-				workspaceIdInput.value = wid;					
-			} );		
-		
-	});
+    getCurrentTabUrl()
+        .then(function (url) {
+
+            var timerButton = document.getElementById('startTimer');
+            timerButton.addEventListener('click', startTimer);
+
+            var saveTokenButton = document.getElementById('saveKey');
+            saveTokenButton.addEventListener('click', saveApiToken);
+
+            var workspaceIdInput = document.getElementById('workspaceId');
+            getWorkspaceId()
+                .then(function(wid){
+                    workspaceIdInput.value = wid;
+                } );
+
+        });
 	
 	getCurrentTimeEntry()
         .then(function(entry){
