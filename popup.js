@@ -162,7 +162,11 @@ function lookUpProject() {
 function extractProjectName(url) {
     //alert(url.indexOf('https://confluence.fluidda.com/display/'));
     if (url.indexOf('https://confluence.fluidda.com/display/') !== -1) {
-        return url.split('/')[4];
+        var spaceKey = url.split('/')[4];
+        if(spaceKey.indexOf('x') == 4){ //if spaceKey contains 'x' instead of '_'
+            spaceKey = spaceKey.substr(0,4)+'_'+spaceKey.substr(5);
+        }
+        return spaceKey;
     } else if (url.indexOf('https://jira.fluidda.com/projects/') !== -1) {
         return url.split('/')[4];
     } else if (url.indexOf('https://jira.fluidda.com/browse/') !== -1) {
