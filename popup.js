@@ -240,6 +240,15 @@ function getCurrentTimeEntry() {
         });
 }
 
+function getCurrentTimeEntryWithProject() {
+    return getCurrentTimeEntry().then(function (timeEntry){
+        return lookUpProjectById(timeEntry.pid).then(function (project){
+            timeEntry.project = project;
+            return timeEntry;
+        });
+    });
+}
+
 function getWorkspaceId() {
     return chromep.storage.sync.get("wid").then(function (data) {
         if (typeof data.wid === 'undefined') {
@@ -293,6 +302,7 @@ function sortByRecentTimeEntries(projects) {
             var index = sortedToggleProjectNames.indexOf(projects[i].key);
             if(index!=-1){
                 projects[i].order = index;
+                projects[i].toggleId = toggleProjects[index].id;
             }
         }
 
@@ -357,11 +367,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var saveTokenButton = document.getElementById('saveKey');
     saveTokenButton.addEventListener('click', saveApiToken);
 
-    getCurrentTimeEntry()
+    getCurrentTimeEntryWithProject()
         .then(function (entry) {
             var messageElement = document.getElementById('current');
-            var description = entry.description ? entry.description : '(no description)';
-
+            var description = "<strong>"+entry.project.name+"</strong> ";
+            if(entry.description){
+                description = description + entry.description
+            }
             messageElement.innerHTML = description;
         });
 
@@ -377,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log(projects);
             for (var i = 0; i < projects.length; i++) {
                 var option = document.createElement("option");
-                option.value = projects[i].key;
+                option.value = projects[i].toggleId? projects[i].toggleId: projects[i].key;
                 option.text = projects[i].name;
                 selectList.appendChild(option);
             }
