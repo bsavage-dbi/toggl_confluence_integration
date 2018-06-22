@@ -41,7 +41,7 @@ function saveApiToken() {
         });
 }
 
-function getAuthorizationHeader() {
+function getTogglAuthorizationHeader() {
     return chromep.storage.sync.get("token")
         .then(function (res) {
             return "Basic " + btoa(res.token + ':api_token');
@@ -49,7 +49,7 @@ function getAuthorizationHeader() {
 }
 
 function startTimer() {
-    var authorizationHeaderPromise = getAuthorizationHeader();
+    var authorizationHeaderPromise = getTogglAuthorizationHeader();
     var projectIdPromise = lookUpProject();
     var taskDescriptionPromise = extractTaskDescription();
     var currentTimeEntryPromise = getCurrentTimeEntry();
@@ -103,7 +103,7 @@ function startTimer() {
 }
 
 function lookUpProject() {
-    var authorizationHeaderPromise = getAuthorizationHeader();
+    var authorizationHeaderPromise = getTogglAuthorizationHeader();
     var workspaceIdPromise = getWorkspaceId();
 
     var projectsPromise = Promise.all([authorizationHeaderPromise, workspaceIdPromise])
@@ -160,6 +160,26 @@ function lookUpProject() {
         });
 }
 
+function lookUpProjectById(pid){
+    return getTogglAuthorizationHeader()
+        .then(function (headerValue) {
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", "https://www.toggl.com/api/v8/projects/"+pid, true);
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.onload = resolve;
+                xhr.onerror = reject;
+                xhr.send();
+            }).then(function (e) {
+                console.log('lookUpProject succes: ' + e.target.response);
+                return JSON.parse(e.target.response).data;
+            }, function (e) {
+                console.log('lookUpProject error: ' + e);
+            });
+
+        });
+}
+
 function extractProjectName(url) {
     //alert(url.indexOf('https://confluence.fluidda.com/display/'));
     if (url.indexOf('https://confluence.fluidda.com/display/') !== -1) {
@@ -201,7 +221,7 @@ function extractTaskDescription() {
 }
 
 function getCurrentTimeEntry() {
-    return getAuthorizationHeader()
+    return getTogglAuthorizationHeader()
         .then(function (headerValue) {
                 return new Promise(function (resolve, reject) {
                     var xhr = new XMLHttpRequest();
@@ -239,6 +259,88 @@ function getWorkspaceId() {
     });
 }
 
+function getJiraProjects() {
+    return new Promise(function (resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "https://jira.fluidda.com/rest/userprojectrest/1/project");
+        //xhr.setRequestHeader("Authorization", headerValue);
+        xhr.setRequestHeader("Content-type", "application/json");
+        xhr.onload = resolve;
+        xhr.onerror = reject;
+        var body = {"user": ["tomvr"], "permissions": ["WORK_ON_ISSUES"]};
+        xhr.send(JSON.stringify(body));
+    }).then(function (e) {
+        console.debug('getJiraProjects success!');
+        //console.debug('getJiraProjects success!' + e.target.response);
+        return JSON.parse(e.target.response).tomvr
+    }, function (e) {
+        console.error('getJiraProjects error: ' + e);
+    }).then(function (projects) {
+        return projects.map(function (project) {
+            return {jiraId: project.id, key: project.key, name: project.name, order: 999};
+        });
+    });
+}
+
+function sortByRecentTimeEntries(projects) {
+    return getSortedToggleProjects().then(function (toggleProjects) {
+        console.log(toggleProjects);
+        var sortedToggleProjectNames = toggleProjects.map(function (toggleProject){
+            return toggleProject.name.toUpperCase();
+        })
+
+        for (var i = 0; i < projects.length; i++) {
+            var index = sortedToggleProjectNames.indexOf(projects[i].key);
+            if(index!=-1){
+                projects[i].order = index;
+            }
+        }
+
+        return projects.sort(function(a, b){return a.order - b.order});
+    });
+}
+
+function getSortedToggleProjects() {
+    return getTogglAuthorizationHeader()
+        .then(function (headerValue) {
+                return new Promise(function (resolve, reject) {
+                    var endDate = new Date();
+                    var startDate = new Date();
+                    startDate.setDate(startDate.getDate() - 30);
+                    var url = "https://www.toggl.com/api/v8/time_entries?start_date=" + startDate.toISOString() + "&end_date=" + endDate.toISOString();
+                    console.log(url);
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("GET", url);
+                    xhr.setRequestHeader("Authorization", headerValue);
+                    xhr.onload = resolve;
+                    xhr.onerror = reject;
+                    xhr.send();
+                });
+            }
+        ).then(function (e) {
+            console.log('getSortedToggleProjects success!');
+            //console.debug(e.target.response);
+            return JSON.parse(e.target.response)
+        }, function (e) {
+            console.log('getSortedToggleProjects error: ' + e);
+        }).then(function (toggleProjects) {
+            console.log(toggleProjects);
+            return toggleProjects.map(function (project) {
+                return project.pid;
+            }).filter(function (value, index, self) {
+                return self.indexOf(value) === index;
+            });
+        }).then(function (uniqueToggleProjectIds) {
+            var projectNamePromises = [];
+
+            for (var i = 0; i < uniqueToggleProjectIds.length; i++) {
+                projectNamePromises.push(lookUpProjectById(uniqueToggleProjectIds[i]));
+            }
+
+            return Promise.all(projectNamePromises);
+        });
+}
+
 // This extension loads the saved background color for the current tab if one
 // exists. The user can select a new background color from the dropdown for the
 // current page, and it will be saved as part of the extension's isolated
@@ -255,13 +357,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var saveTokenButton = document.getElementById('saveKey');
     saveTokenButton.addEventListener('click', saveApiToken);
 
-    var workspaceIdInput = document.getElementById('workspaceId');
-    getWorkspaceId()
-        .then(function (wid) {
-            workspaceIdInput.value = wid;
-        });
-
-
     getCurrentTimeEntry()
         .then(function (entry) {
             var messageElement = document.getElementById('current');
@@ -274,4 +369,17 @@ document.addEventListener('DOMContentLoaded', function () {
         var currentElement = document.getElementById('fromPage');
         currentElement.innerHTML = description;
     });
+
+    getJiraProjects()
+        .then(sortByRecentTimeEntries)
+        .then(function (projects) {
+            var selectList = document.getElementById('jiraProjects');
+            console.log(projects);
+            for (var i = 0; i < projects.length; i++) {
+                var option = document.createElement("option");
+                option.value = projects[i].key;
+                option.text = projects[i].name;
+                selectList.appendChild(option);
+            }
+        });
 });
