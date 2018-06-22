@@ -7,14 +7,13 @@
 <html>
   <head>
     <title>Getting Started Extension's Popup</title>
-    <style type="text/css">
+      <link href="css/bootstrap.min.css" rel="stylesheet">
+      <link href="css/custom.css" rel="stylesheet">
+
+      <style type="text/css">
       body {
         margin: 10px;
         white-space: nowrap;
-      }
-
-      h1 {
-        font-size: 15px;
       }
 
       #container {
@@ -35,19 +34,42 @@
 	
   </head>
     <body>
-        <h1>Toggl-Confluence Integration</h1>
-        <div id="container">
-            <div>
-                <span id="current">No timer is running!</span>
+        <div class="panel panel-danger">
+            <div class="panel-heading">Current</div>
+            <div class="panel-body">
+                <p id="current">No timer is running!</p>
+                <div>
+                    <button type="button" class="btn btn-default btn-xs">Concept</button>
+                    <button type="button" class="btn btn-info btn-xs">Def & Planning</button>
+                    <button type="button" class="btn btn-default btn-xs">Start-up</button>
+                    <button type="button" class="btn btn-default btn-xs">Conduct</button>
+                    <button type="button" class="btn btn-default btn-xs">Closure</button>
+                </div>
             </div>
-            <div>
-                <button id="startTimer">Start Timer</button><span id="userMsg"></span>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">Start new</div>
+            <div class="panel-body">
+                <button class="btn btn-sm btn-default" id="startTimer">From page <span>"<span id="fromPage"></span>"</span></button>
+                <hr/>
+                <select multiple class="form-control">
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                </select>
+                <div class="alert alert-warning hidden" role="alert" id="userMsg"></div>
             </div>
-            <hr/>
-            <div>
-                <span>Toggl personal API key</span>
-                <input type="text" name="personalApiKey" id="personalApiKey" placeholder="Paste key here..."/>
-                <button id="saveKey">Save</button>
+        </div>
+        <div class="panel panel-info">
+            <div class="panel-heading">Configuration</div>
+            <div class="panel-body">
+                <div class="col-xs-11 col-xs-offset-1">
+                    <span>Toggl personal API key</span>
+                    <input type="text" name="personalApiKey" id="personalApiKey" placeholder="Paste key here..."/>
+                    <button id="saveKey">Save</button>
+                </div>
             </div>
         </div>
     </body>

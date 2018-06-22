@@ -68,6 +68,7 @@ function startTimer() {
                 var messageElement = document.getElementById('userMsg');
                 currentElement.innerHTML = taskDescription;
                 messageElement.innerHTML = 'Timer already started!';
+                messageElement.classList.remove("hidden");
             }else{
 
                 new Promise(function (resolve, reject) {
@@ -268,4 +269,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             messageElement.innerHTML = description;
         });
+
+    extractTaskDescription().then(function (description) {
+        var currentElement = document.getElementById('fromPage');
+        currentElement.innerHTML = description;
+    });
 });
