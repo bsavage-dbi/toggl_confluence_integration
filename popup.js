@@ -268,6 +268,33 @@ function getWorkspaceId() {
     });
 }
 
+function getProjects() {
+    var jiraProjectsPromise = getJiraProjects();
+    var toggleProjectsPromise = getSortedToggleProjects();
+
+    return Promise.all([jiraProjectsPromise, toggleProjectsPromise])
+        .then(function (values) {
+            var jiraProjects = values[0];
+            var toggleProjects = values[1];
+            var jiraProjectsNotInToggle = [];
+
+            var sortedToggleProjectNames = toggleProjects.map(function (toggleProject){
+                return toggleProject.name.toUpperCase();
+            });
+
+            for (var i = 0; i < jiraProjects.length; i++) {
+                var index = sortedToggleProjectNames.indexOf(jiraProjects[i].key);
+                if(index==-1){
+                    jiraProjectsNotInToggle.push(jiraProjects[i]);
+                }else{
+                    toggleProjects[index].source = '+Jira+';
+                }
+            }
+
+            return toggleProjects.concat(jiraProjectsNotInToggle);
+        });
+}
+
 function getJiraProjects() {
     return new Promise(function (resolve, reject) {
         var xhr = new XMLHttpRequest();
@@ -286,27 +313,8 @@ function getJiraProjects() {
         console.error('getJiraProjects error: ' + e);
     }).then(function (projects) {
         return projects.map(function (project) {
-            return {jiraId: project.id, key: project.key, name: project.name, order: 999};
+            return {jiraId: project.id, key: project.key, name: project.name, order: 999, source:'+Jira+'};
         });
-    });
-}
-
-function sortByRecentTimeEntries(projects) {
-    return getSortedToggleProjects().then(function (toggleProjects) {
-        console.log(toggleProjects);
-        var sortedToggleProjectNames = toggleProjects.map(function (toggleProject){
-            return toggleProject.name.toUpperCase();
-        })
-
-        for (var i = 0; i < projects.length; i++) {
-            var index = sortedToggleProjectNames.indexOf(projects[i].key);
-            if(index!=-1){
-                projects[i].order = index;
-                projects[i].toggleId = toggleProjects[index].id;
-            }
-        }
-
-        return projects.sort(function(a, b){return a.order - b.order});
     });
 }
 
@@ -348,6 +356,10 @@ function getSortedToggleProjects() {
             }
 
             return Promise.all(projectNamePromises);
+        }).then(function (toggleProjects) {
+            return toggleProjects.map(function (toggleProject, index){
+                return {id: toggleProject.id, name: toggleProject.name.toUpperCase(), order: index, source:'Toggle'};
+            })
         });
 }
 
@@ -382,15 +394,14 @@ document.addEventListener('DOMContentLoaded', function () {
         currentElement.innerHTML = description;
     });
 
-    getJiraProjects()
-        .then(sortByRecentTimeEntries)
+    getProjects()
         .then(function (projects) {
-            var selectList = document.getElementById('jiraProjects');
+            var selectList = document.getElementById('projects');
             console.log(projects);
             for (var i = 0; i < projects.length; i++) {
                 var option = document.createElement("option");
                 option.value = projects[i].toggleId? projects[i].toggleId: projects[i].key;
-                option.text = projects[i].name;
+                option.text = '['+projects[i].source+'] '+projects[i].name;
                 selectList.appendChild(option);
             }
         });
