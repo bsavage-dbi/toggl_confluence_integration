@@ -65,10 +65,8 @@ function startTimer() {
 
             if(currentTimeEntry && taskDescription === currentTimeEntry.description && pid === currentTimeEntry.pid){
                 var currentElement = document.getElementById('current');
-                var messageElement = document.getElementById('userMsg');
                 currentElement.innerHTML = taskDescription;
-                messageElement.innerHTML = 'Timer already started!';
-                messageElement.classList.remove("hidden");
+                showMessage('Timer already started!');
             }else{
 
                 new Promise(function (resolve, reject) {
@@ -94,11 +92,50 @@ function startTimer() {
                     console.log('start start error: ' + e);
                 }).then(function (timeEntry) {
                     var currentElement = document.getElementById('current');
-                    var messageElement = document.getElementById('userMsg');
                     currentElement.innerHTML = timeEntry.description;
-                    messageElement.innerHTML = 'Timer started!';
+
+                    showMessage('Timer started!');
                 });
             }
+        });
+}
+
+function startTimerFromProject(projectId) {
+    var authorizationHeaderPromise = getTogglAuthorizationHeader();
+    var currentTimeEntryPromise = getCurrentTimeEntry();
+
+    Promise.all([authorizationHeaderPromise, currentTimeEntryPromise])
+        .then(function (values) {
+            console.log('Promise returned: ' + values);
+
+            var headerValue = values[0];
+            var currentTimeEntry = values[1];
+
+            new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "https://www.toggl.com/api/v8/time_entries/start", true);
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.setRequestHeader("Content-type", "application/json");
+                xhr.onload = resolve;
+                xhr.onerror = reject;
+                var body = {
+                    "time_entry": {
+                        "created_with": "chrome ext",
+                        "pid": projectId,
+                    }
+                };
+                xhr.send(JSON.stringify(body));
+
+            }).then(function (e) {
+                console.log('start start success: ' + e.target.response);
+                return JSON.parse(e.target.response).data
+            }, function (e) {
+                console.log('start start error: ' + e);
+            }).then(addProjectDetails).then(function (timeEntry) {
+                showMessage('Timer started!');
+                setCurrentTask(timeEntry);
+            });
+
         });
 }
 
@@ -145,19 +182,29 @@ function lookUpProject() {
                         return currentProjectName.toLowerCase() == project.name.toLowerCase();
                     });
                 if (filtered.length == 0) {
-                    var reason = 'No Project found in toggle with name: ' + currentProjectName;
-                    var messageElement = document.getElementById('userMsg');
-                    messageElement.innerHTML = reason;
+                    showMessage('No Project found in toggle with name: ' + currentProjectName);
+
                     return Promise.reject(reason);
                 } else {
                     return filtered[0].id;
                 }
             }
-            var reason = 'Could not extract project name';
-            var messageElement = document.getElementById('userMsg');
-            messageElement.innerHTML = reason;
+            showMessage('Could not extract project name');
+
             return Promise.reject(reason);
         });
+}
+
+function showMessage(message) {
+    var messageElement = document.getElementById('userMsg');
+    messageElement.innerHTML = message;
+    messageElement.classList.remove("hidden");
+}
+
+function hideMessage(message) {
+    var messageElement = document.getElementById('userMsg');
+    messageElement.classList.add("hidden");
+    messageElement.innerHTML = '';
 }
 
 function lookUpProjectById(pid){
@@ -241,11 +288,13 @@ function getCurrentTimeEntry() {
 }
 
 function getCurrentTimeEntryWithProject() {
-    return getCurrentTimeEntry().then(function (timeEntry){
-        return lookUpProjectById(timeEntry.pid).then(function (project){
-            timeEntry.project = project;
-            return timeEntry;
-        });
+    return getCurrentTimeEntry().then(addProjectDetails);
+}
+
+function addProjectDetails(timeEntry) {
+    return lookUpProjectById(timeEntry.pid).then(function (project) {
+        timeEntry.project = project;
+        return timeEntry;
     });
 }
 
@@ -363,6 +412,28 @@ function getSortedToggleProjects() {
         });
 }
 
+function refreshCurrentTimeEntry() {
+    getCurrentTimeEntryWithProject()
+        .then(setCurrentTask);
+}
+
+function setCurrentTask(entry) {
+    var messageElement = document.getElementById('current');
+    var description = "<strong>" + entry.project.name + "</strong> ";
+    if (entry.description) {
+        description = description + entry.description
+    }
+    messageElement.innerHTML = description;
+}
+
+function createOnClick(projectid) {
+    var pid = projectid;
+    return function () {
+        hideMessage();
+        startTimerFromProject(pid);
+    };
+}
+
 // This extension loads the saved background color for the current tab if one
 // exists. The user can select a new background color from the dropdown for the
 // current page, and it will be saved as part of the extension's isolated
@@ -379,15 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var saveTokenButton = document.getElementById('saveKey');
     saveTokenButton.addEventListener('click', saveApiToken);
 
-    getCurrentTimeEntryWithProject()
-        .then(function (entry) {
-            var messageElement = document.getElementById('current');
-            var description = "<strong>"+entry.project.name+"</strong> ";
-            if(entry.description){
-                description = description + entry.description
-            }
-            messageElement.innerHTML = description;
-        });
+    refreshCurrentTimeEntry();
 
     extractTaskDescription().then(function (description) {
         var currentElement = document.getElementById('fromPage');
@@ -400,8 +463,11 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log(projects);
             for (var i = 0; i < projects.length; i++) {
                 var option = document.createElement("option");
-                option.value = projects[i].toggleId? projects[i].toggleId: projects[i].key;
+                var projectId = projects[i].id ? projects[i].id : projects[i].key;
+                console.log(projectId);
+                option.value = projectId;
                 option.text = '['+projects[i].source+'] '+projects[i].name;
+                option.onclick = createOnClick(projectId);
                 selectList.appendChild(option);
             }
         });
