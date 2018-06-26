@@ -454,12 +454,14 @@ function refreshCurrentTimeEntry() {
 }
 
 function setCurrentTask(entry) {
+    var projectElement = document.getElementById('currentProject');
+    projectElement.innerHTML = entry.project.name;
+
     var messageElement = document.getElementById('current');
-    var description = "<strong>" + entry.project.name + "</strong> ";
     if (entry.description) {
-        description = description + entry.description
+        messageElement.value = entry.description;
     }
-    messageElement.innerHTML = description;
+
     setCurrentTag(entry.tags);
 }
 
@@ -538,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function () {
             //<button type="button" class="btn btn-default btn-xs">Concept</button>
             var button = document.createElement("button");
             button.type = 'button';
-            button.className  = 'btn btn-default btn-xs';
+            button.className  = 'btn btn-default';
             button.innerHTML = tags[i];
             button.onclick = createOnClickTag(tags[i]);
             tagList.appendChild(button);
