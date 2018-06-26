@@ -85,6 +85,51 @@ function saveToggleLabels() {
         });
 }
 
+function getTogglProjectId(projectId) {
+    if(isNaN(projectId)){
+        var jiraKey = projectId;
+        var authorizationHeaderPromise = getTogglAuthorizationHeader();
+        var workspaceIdPromise = getWorkspaceId();
+
+        return Promise.all([authorizationHeaderPromise, workspaceIdPromise])
+            .then(function (values) {
+                console.log('Promises returned: ' + values);
+
+                var headerValue = values[0];
+                var wid = values[1];
+
+                return new Promise(function (resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", "https://www.toggl.com/api/v8/projects", true);
+                    xhr.setRequestHeader("Authorization", headerValue);
+                    xhr.setRequestHeader("Content-type", "application/json");
+                    xhr.onload = resolve;
+                    xhr.onerror = reject;
+                    var body = {
+                        "project": {
+                            "name": jiraKey,
+                            "wid": wid,
+                        }
+                    };
+                    xhr.send(JSON.stringify(body));
+
+                }).then(function (e) {
+                    console.log('toggle project creation success: ' + e.target.response);
+                    return JSON.parse(e.target.response).data
+                }).then(function (project) {
+                    return project.id;
+                }).catch(function (e) {
+                    console.error('toggle project creation error: ' + e);
+                });
+
+        });
+    }else{
+        return Promise.resolve(projectId);
+    }
+
+
+}
+
 function startTimer() {
     var authorizationHeaderPromise = getTogglAuthorizationHeader();
     var projectIdPromise = lookUpProject();
@@ -137,14 +182,14 @@ function startTimer() {
 
 function startTimerFromProject(projectId) {
     var authorizationHeaderPromise = getTogglAuthorizationHeader();
-    var currentTimeEntryPromise = getCurrentTimeEntry();
+    var togglProjectIdPromise = getTogglProjectId(projectId);
 
-    Promise.all([authorizationHeaderPromise, currentTimeEntryPromise])
+    Promise.all([authorizationHeaderPromise, togglProjectIdPromise])
         .then(function (values) {
             console.log('Promise returned: ' + values);
 
             var headerValue = values[0];
-            var currentTimeEntry = values[1];
+            var togglProjectId = values[1];
 
             new Promise(function (resolve, reject) {
                 var xhr = new XMLHttpRequest();
@@ -156,7 +201,7 @@ function startTimerFromProject(projectId) {
                 var body = {
                     "time_entry": {
                         "created_with": "chrome ext",
-                        "pid": projectId,
+                        "pid": togglProjectId,
                     }
                 };
                 xhr.send(JSON.stringify(body));
@@ -502,7 +547,7 @@ function getSortedToggleProjects() {
         ).then(function (e) {
             console.log('getSortedTimeEntries success!');
             //console.debug(e.target.response);
-            return JSON.parse(e.target.response)
+            return JSON.parse(e.target.response).reverse();
         }).then(function (toggleProjects) {
             console.log(toggleProjects);
             return toggleProjects.map(function (project) {
@@ -526,6 +571,10 @@ function getSortedToggleProjects() {
             return toggleProjects.map(function (toggleProject, index){
                 return {id: toggleProject.id, name: toggleProject.name.toUpperCase(), order: index, source:'Toggle'};
             })
+        }).then(function (toggleProjects) {
+            console.info('sorted toggle Projects:');
+            console.info(toggleProjects);
+            return toggleProjects;
         }).catch(function (e) {
             console.error('getSortedToggleProjects error: ' + e);
             return [];
