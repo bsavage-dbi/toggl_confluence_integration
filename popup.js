@@ -510,6 +510,10 @@ function getSortedToggleProjects() {
                 return self.indexOf(value) === index;
             });
         }).then(function (uniqueToggleProjectIds) {
+            var sublistLength = 20;
+            var end = uniqueToggleProjectIds.length> sublistLength? sublistLength:uniqueToggleProjectIds.length;
+            return uniqueToggleProjectIds.slice(0, end);
+        }).then(function (uniqueToggleProjectIds) {
             var projectNamePromises = [];
 
             for (var i = 0; i < uniqueToggleProjectIds.length; i++) {
