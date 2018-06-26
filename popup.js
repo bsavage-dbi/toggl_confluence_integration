@@ -48,8 +48,6 @@ function getTogglAuthorizationHeader() {
         });
 }
 
-
-
 function getSavedJiraUserName() {
     return chromep.storage.sync.get("jiraUserName").then(function (res) {
         console.log(res);
@@ -62,6 +60,28 @@ function saveJiraUserName() {
     chromep.storage.sync.set({"jiraUserName": jiraUserName})
         .then(function () {
             alert('Saved userName: ' + jiraUserName);
+        });
+}
+
+function getSavedToggleLabels() {
+    return chromep.storage.sync.get("labels").then(function (res) {
+        console.log(res);
+        if(res.labels){
+            return res.labels;
+        }else{
+            return ['Concept', 'Def & Planning', 'Start-up', 'Conduct', 'Closure'];
+        }
+    });
+}
+
+function saveToggleLabels() {
+    var labelsString = document.getElementById('toggleLabels').value;
+    var labels = labelsString.split(',').map(function(label){
+        return label.trim();
+    });
+    chromep.storage.sync.set({"labels": labels})
+        .then(function () {
+            alert('Saved labels: ' + labelsString);
         });
 }
 
@@ -404,7 +424,7 @@ function getWorkspaceId() {
 }
 
 function getTags() {
-    return Promise.resolve(['Concept', 'Def & Planning', 'Start-up', 'Conduct', 'Closure']);
+    return getSavedToggleLabels();
 }
 
 function getProjects() {
@@ -576,6 +596,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var saveJiraUserNameButton = document.getElementById('saveJiraUsernameButton');
     saveJiraUserNameButton.addEventListener('click', saveJiraUserName);
 
+    var saveToggleLabelsButton = document.getElementById('saveToggleLabelsButton');
+    saveToggleLabelsButton.addEventListener('click', saveToggleLabels);
+
     refreshCurrentTimeEntry();
 
     extractTaskDescription().then(function (description) {
@@ -616,4 +639,11 @@ document.addEventListener('DOMContentLoaded', function () {
         var inputField = document.getElementById('jiraUserName');
         inputField.value = jiraUserName;
     });
+
+    getSavedToggleLabels()
+        .then(function (labelsArray) { return labelsArray.join(',') })
+        .then(function (labelsString) {
+            var inputField = document.getElementById('toggleLabels');
+            inputField.value = labelsString;
+        });
 });
