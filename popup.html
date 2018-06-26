@@ -40,15 +40,10 @@
   </head>
     <body>
         <div class="panel panel-danger">
-            <div class="panel-heading">Current</div>
+            <div class="panel-heading">Current <strong class="hidden pull-right" id="userMsg"></strong></div>
             <div class="panel-body">
                 <p id="current">No timer is running!</p>
-                <div>
-                    <button type="button" class="btn btn-default btn-xs">Concept</button>
-                    <button type="button" class="btn btn-info btn-xs">Def & Planning</button>
-                    <button type="button" class="btn btn-default btn-xs">Start-up</button>
-                    <button type="button" class="btn btn-default btn-xs">Conduct</button>
-                    <button type="button" class="btn btn-default btn-xs">Closure</button>
+                <div id="tagList">
                 </div>
             </div>
         </div>
@@ -64,7 +59,6 @@
                     <select multiple class="form-control" id="projects" size="10">
                     </select>
                 </div>
-                <div class="alert alert-warning hidden voffset-2" role="alert" id="userMsg"></div>
             </div>
         </div>
         <div class="panel panel-info">

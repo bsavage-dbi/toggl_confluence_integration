@@ -64,8 +64,7 @@ function startTimer() {
             var currentTimeEntry = values[3];
 
             if(currentTimeEntry && taskDescription === currentTimeEntry.description && pid === currentTimeEntry.pid){
-                var currentElement = document.getElementById('current');
-                currentElement.innerHTML = taskDescription;
+                setCurrentTask(currentTimeEntry);
                 showMessage('Timer already started!');
             }else{
 
@@ -91,8 +90,7 @@ function startTimer() {
                 }, function (e) {
                     console.log('start start error: ' + e);
                 }).then(function (timeEntry) {
-                    var currentElement = document.getElementById('current');
-                    currentElement.innerHTML = timeEntry.description;
+                    setCurrentTask(timeEntry);
 
                     showMessage('Timer started!');
                 });
@@ -137,6 +135,40 @@ function startTimerFromProject(projectId) {
             });
 
         });
+}
+
+function addTagByName(tagName){
+    console.log(tagName);
+    var authorizationHeaderPromise = getTogglAuthorizationHeader();
+    var currentTimeEntryPromise = getCurrentTimeEntry();
+
+    Promise.all([authorizationHeaderPromise, currentTimeEntryPromise])
+        .then(function (values) {
+            console.log('Promise returned: ' + values);
+
+            var headerValue = values[0];
+            var currentTimeEntry = values[1];
+        return new Promise(function (resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("PUT", "https://www.toggl.com/api/v8/time_entries/"+currentTimeEntry.id, true);
+            xhr.setRequestHeader("Authorization", headerValue);
+            xhr.setRequestHeader("Content-type", "application/json");
+            xhr.onload = resolve;
+            xhr.onerror = reject;
+            var body = {'time_entry': currentTimeEntry};
+            currentTimeEntry.tags = [tagName];
+            xhr.send(JSON.stringify(body));
+
+        }).then(function (e) {
+            console.log('addTagByName success: ' + e.target.response);
+            return JSON.parse(e.target.response).data
+        }, function (e) {
+            console.log('addTagByName error: ' + e);
+        }).then(addProjectDetails).then(function (timeEntry) {
+            showMessage('Tag added!');
+            setCurrentTask(timeEntry);
+        });
+    });
 }
 
 function lookUpProject() {
@@ -317,6 +349,10 @@ function getWorkspaceId() {
     });
 }
 
+function getTags() {
+    return Promise.resolve(['Concept', 'Def & Planning', 'Start-up', 'Conduct', 'Closure']);
+}
+
 function getProjects() {
     var jiraProjectsPromise = getJiraProjects();
     var toggleProjectsPromise = getSortedToggleProjects();
@@ -424,13 +460,36 @@ function setCurrentTask(entry) {
         description = description + entry.description
     }
     messageElement.innerHTML = description;
+    setCurrentTag(entry.tags);
 }
 
-function createOnClick(projectid) {
+function setCurrentTag(tags) {
+    var children = document.getElementById('tagList').children;
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        // Do stuff
+        if(tags && tags.indexOf(child.innerHTML)!=-1){
+            child.classList.add("btn-info");
+        }else{
+            child.classList.remove("btn-info");
+            child.classList.add("btn-default");
+        }
+    }
+}
+
+function createOnClickOption(projectid) {
     var pid = projectid;
     return function () {
         hideMessage();
         startTimerFromProject(pid);
+    };
+}
+
+function createOnClickTag(name) {
+    var tagName = name;
+    return function () {
+        hideMessage();
+        addTagByName(tagName);
     };
 }
 
@@ -467,8 +526,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log(projectId);
                 option.value = projectId;
                 option.text = '['+projects[i].source+'] '+projects[i].name;
-                option.onclick = createOnClick(projectId);
+                option.onclick = createOnClickOption(projectId);
                 selectList.appendChild(option);
             }
         });
+
+    getTags().then(function (tags) {
+        var tagList = document.getElementById('tagList');
+        console.log(tags);
+        for (var i = 0; i < tags.length; i++) {
+            //<button type="button" class="btn btn-default btn-xs">Concept</button>
+            var button = document.createElement("button");
+            button.type = 'button';
+            button.className  = 'btn btn-default btn-xs';
+            button.innerHTML = tags[i];
+            button.onclick = createOnClickTag(tags[i]);
+            tagList.appendChild(button);
+        }
+    });
 });
