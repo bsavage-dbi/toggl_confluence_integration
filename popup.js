@@ -544,27 +544,29 @@ function setCurrentTask(entry) {
 }
 
 function setCurrentTag(tags) {
-    console.log(tags);
-    var children = document.getElementById('tagList').children;
-    var foundTags = [];
-    for (var i = 0; i < children.length; i++) {
-        var child = children[i];
-        // Do stuff
-        if(tags && tags.indexOf(child.innerHTML)!=-1){
-            child.classList.add("btn-info");
-            foundTags.push(child.innerHTML);
-        }else{
-            child.classList.remove("btn-info");
-            child.classList.add("btn-default");
+    if(tags && tags.length){
+        console.log(tags);
+        var children = document.getElementById('tagList').children;
+        var foundTags = [];
+        for (var i = 0; i < children.length; i++) {
+            var child = children[i];
+            // Do stuff
+            if(tags && tags.indexOf(child.innerHTML)!=-1){
+                child.classList.add("btn-info");
+                foundTags.push(child.innerHTML);
+            }else{
+                child.classList.remove("btn-info");
+                child.classList.add("btn-default");
+            }
         }
-    }
-    console.log(foundTags);
-    var notFoundTags = tags.filter(function(value){return -1 == foundTags.indexOf(value)});
-    console.log(notFoundTags);
-    for (var i = 0; i < notFoundTags.length; i++) {
-        var newChild = createTagButton(notFoundTags[i]);
-        newChild.classList.add("btn-info");
-        document.getElementById('tagList').appendChild(newChild);
+        console.log(foundTags);
+        var notFoundTags = tags.filter(function(value){return -1 == foundTags.indexOf(value)});
+        console.log(notFoundTags);
+        for (var i = 0; i < notFoundTags.length; i++) {
+            var newChild = createTagButton(notFoundTags[i]);
+            newChild.classList.add("btn-info");
+            document.getElementById('tagList').appendChild(newChild);
+        }
     }
 }
 
