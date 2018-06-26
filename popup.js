@@ -89,7 +89,7 @@ function startTimer() {
     var authorizationHeaderPromise = getTogglAuthorizationHeader();
     var projectIdPromise = lookUpProject();
     var taskDescriptionPromise = extractTaskDescription();
-    var currentTimeEntryPromise = getCurrentTimeEntry();
+    var currentTimeEntryPromise = getCurrentTimeEntryWithProject();
 
     Promise.all([taskDescriptionPromise, projectIdPromise, authorizationHeaderPromise, currentTimeEntryPromise])
         .then(function (values) {
@@ -122,14 +122,14 @@ function startTimer() {
                     xhr.send(JSON.stringify(body));
 
                 }).then(function (e) {
-                    console.log('start start success: ' + e.target.response);
+                    console.log('start timer success: ' + e.target.response);
                     return JSON.parse(e.target.response).data
-                }, function (e) {
-                    console.log('start start error: ' + e);
-                }).then(function (timeEntry) {
+                }).then(addProjectDetails).then(function (timeEntry) {
                     setCurrentTask(timeEntry);
 
                     showMessage('Timer started!');
+                }).catch(function (e) {
+                    console.error('start timer error: ' + e);
                 });
             }
         });
@@ -162,13 +162,13 @@ function startTimerFromProject(projectId) {
                 xhr.send(JSON.stringify(body));
 
             }).then(function (e) {
-                console.log('start start success: ' + e.target.response);
+                console.log('startTimerFromProject success: ' + e.target.response);
                 return JSON.parse(e.target.response).data
-            }, function (e) {
-                console.log('start start error: ' + e);
             }).then(addProjectDetails).then(function (timeEntry) {
                 showMessage('Timer started!');
                 setCurrentTask(timeEntry);
+            }).catch(function (e) {
+                console.error('startTimerFromProject error: ' + e);
             });
 
         });
@@ -202,11 +202,11 @@ function saveTaskDescription(){
             }).then(function (e) {
                 console.log('saveTaskDescription success: ' + e.target.response);
                 return JSON.parse(e.target.response).data
-            }, function (e) {
-                console.log('saveTaskDescription error: ' + e);
             }).then(addProjectDetails).then(function (timeEntry) {
                 showMessage('Description saved!');
                 setCurrentTask(timeEntry);
+            }).catch(function (e) {
+                console.error('saveTaskDescription error: ' + e);
             });
         });
 }
@@ -236,11 +236,11 @@ function addTagByName(tagName){
         }).then(function (e) {
             console.log('addTagByName success: ' + e.target.response);
             return JSON.parse(e.target.response).data
-        }, function (e) {
-            console.log('addTagByName error: ' + e);
         }).then(addProjectDetails).then(function (timeEntry) {
             showMessage('Tag added!');
             setCurrentTask(timeEntry);
+        }).catch(function (e) {
+            console.error('addTagByName error: ' + e);
         });
     });
 }
@@ -266,8 +266,9 @@ function lookUpProject() {
             }).then(function (e) {
                 console.log('lookUpProject succes: ' + e.target.response);
                 return JSON.parse(e.target.response)
-            }, function (e) {
-                console.log('lookUpProject error: ' + e);
+            }).catch(function (e) {
+                console.error('lookUpProject error: ' + e);
+                return;
             });
 
         });
@@ -326,10 +327,10 @@ function lookUpProjectById(pid){
             }).then(function (e) {
                 console.log('lookUpProject succes: ' + e.target.response);
                 return JSON.parse(e.target.response).data;
-            }, function (e) {
-                console.log('lookUpProject error: ' + e);
+            }).catch(function (e) {
+                console.error('lookUpProject error: ' + e);
+                return;
             });
-
         });
 }
 
@@ -388,8 +389,9 @@ function getCurrentTimeEntry() {
         ).then(function (e) {
             console.log('getCurrentTimeEntry succes: ' + e.target.response);
             return JSON.parse(e.target.response).data
-        }, function (e) {
-            console.log('getCurrentTimeEntry error: ' + e);
+        }).catch(function (e) {
+            console.error('getCurrentTimeEntry error: ' + e);
+            return;
         });
 }
 
@@ -469,12 +471,13 @@ function getJiraProjects() {
             console.debug('getJiraProjects success!');
             //console.debug('getJiraProjects success!' + e.target.response);
             return JSON.parse(e.target.response)[jiraUserName];
-        }, function (e) {
-            console.error('getJiraProjects error: ' + e);
         }).then(function (projects) {
             return projects.map(function (project) {
                 return {jiraId: project.id, key: project.key, name: project.name, order: 999, source:'+Jira+'};
             });
+        }).catch(function (e) {
+            console.error('getJiraProjects error: ' + e);
+            return [];
         });
     });
 }
@@ -497,11 +500,9 @@ function getSortedToggleProjects() {
                 });
             }
         ).then(function (e) {
-            console.log('getSortedToggleProjects success!');
+            console.log('getSortedTimeEntries success!');
             //console.debug(e.target.response);
             return JSON.parse(e.target.response)
-        }, function (e) {
-            console.log('getSortedToggleProjects error: ' + e);
         }).then(function (toggleProjects) {
             console.log(toggleProjects);
             return toggleProjects.map(function (project) {
@@ -525,6 +526,9 @@ function getSortedToggleProjects() {
             return toggleProjects.map(function (toggleProject, index){
                 return {id: toggleProject.id, name: toggleProject.name.toUpperCase(), order: index, source:'Toggle'};
             })
+        }).catch(function (e) {
+            console.error('getSortedToggleProjects error: ' + e);
+            return [];
         });
 }
 
