@@ -540,17 +540,39 @@ function setCurrentTask(entry) {
 }
 
 function setCurrentTag(tags) {
+    console.log(tags);
     var children = document.getElementById('tagList').children;
+    var foundTags = [];
     for (var i = 0; i < children.length; i++) {
         var child = children[i];
         // Do stuff
         if(tags && tags.indexOf(child.innerHTML)!=-1){
             child.classList.add("btn-info");
+            foundTags.push(child.innerHTML);
         }else{
             child.classList.remove("btn-info");
             child.classList.add("btn-default");
         }
     }
+    console.log(foundTags);
+    var notFoundTags = tags.filter(function(value){return -1 == foundTags.indexOf(value)});
+    console.log(notFoundTags);
+    for (var i = 0; i < notFoundTags.length; i++) {
+        var newChild = createTagButton(notFoundTags[i]);
+        newChild.classList.add("btn-info");
+        document.getElementById('tagList').appendChild(newChild);
+    }
+}
+
+function createTagButton(tag){
+    //<button type="button" class="btn btn-default btn-xs">Concept</button>
+    var button = document.createElement("button");
+    button.type = 'button';
+    button.className  = 'btn btn-default';
+    button.innerHTML = tag;
+    button.onclick = createOnClickTag(tag);
+
+    return button;
 }
 
 function createOnClickOption(projectid) {
@@ -625,13 +647,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var tagList = document.getElementById('tagList');
         console.log(tags);
         for (var i = 0; i < tags.length; i++) {
-            //<button type="button" class="btn btn-default btn-xs">Concept</button>
-            var button = document.createElement("button");
-            button.type = 'button';
-            button.className  = 'btn btn-default';
-            button.innerHTML = tags[i];
-            button.onclick = createOnClickTag(tags[i]);
-            tagList.appendChild(button);
+            tagList.appendChild(createTagButton(tags[i]));
         }
     });
 
