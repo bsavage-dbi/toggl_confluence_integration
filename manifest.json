@@ -14,6 +14,7 @@
     "activeTab",
     "storage",
 	"webRequest",
-	"https://*.toggl.com/"
+	"https://*.toggl.com/",
+    "https://*.fluidda.com/"
   ]
 }
