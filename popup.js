@@ -48,6 +48,23 @@ function getTogglAuthorizationHeader() {
         });
 }
 
+
+
+function getSavedJiraUserName() {
+    return chromep.storage.sync.get("jiraUserName").then(function (res) {
+        console.log(res);
+        return res.jiraUserName;
+    });
+}
+
+function saveJiraUserName() {
+    var jiraUserName = document.getElementById('jiraUserName').value;
+    chromep.storage.sync.set({"jiraUserName": jiraUserName})
+        .then(function () {
+            alert('Saved userName: ' + jiraUserName);
+        });
+}
+
 function startTimer() {
     var authorizationHeaderPromise = getTogglAuthorizationHeader();
     var projectIdPromise = lookUpProject();
@@ -134,6 +151,43 @@ function startTimerFromProject(projectId) {
                 setCurrentTask(timeEntry);
             });
 
+        });
+}
+
+function saveTaskDescription(){
+    var saveDescButton = document.getElementById('saveDesc');
+    saveDescButton.classList.add('hidden');
+    var newDescription = document.getElementById('current').value;
+    console.log(newDescription);
+    var authorizationHeaderPromise = getTogglAuthorizationHeader();
+    var currentTimeEntryPromise = getCurrentTimeEntry();
+
+    Promise.all([authorizationHeaderPromise, currentTimeEntryPromise])
+        .then(function (values) {
+            console.log('Promise returned: ' + values);
+
+            var headerValue = values[0];
+            var currentTimeEntry = values[1];
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("PUT", "https://www.toggl.com/api/v8/time_entries/"+currentTimeEntry.id, true);
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.setRequestHeader("Content-type", "application/json");
+                xhr.onload = resolve;
+                xhr.onerror = reject;
+                var body = {'time_entry': currentTimeEntry};
+                currentTimeEntry.description = newDescription;
+                xhr.send(JSON.stringify(body));
+
+            }).then(function (e) {
+                console.log('saveTaskDescription success: ' + e.target.response);
+                return JSON.parse(e.target.response).data
+            }, function (e) {
+                console.log('saveTaskDescription error: ' + e);
+            }).then(addProjectDetails).then(function (timeEntry) {
+                showMessage('Description saved!');
+                setCurrentTask(timeEntry);
+            });
         });
 }
 
@@ -381,24 +435,26 @@ function getProjects() {
 }
 
 function getJiraProjects() {
-    return new Promise(function (resolve, reject) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "https://jira.fluidda.com/rest/userprojectrest/1/project");
-        //xhr.setRequestHeader("Authorization", headerValue);
-        xhr.setRequestHeader("Content-type", "application/json");
-        xhr.onload = resolve;
-        xhr.onerror = reject;
-        var body = {"user": ["tomvr"], "permissions": ["WORK_ON_ISSUES"]};
-        xhr.send(JSON.stringify(body));
-    }).then(function (e) {
-        console.debug('getJiraProjects success!');
-        //console.debug('getJiraProjects success!' + e.target.response);
-        return JSON.parse(e.target.response).tomvr
-    }, function (e) {
-        console.error('getJiraProjects error: ' + e);
-    }).then(function (projects) {
-        return projects.map(function (project) {
-            return {jiraId: project.id, key: project.key, name: project.name, order: 999, source:'+Jira+'};
+    return getSavedJiraUserName().then(function(jiraUserName){
+        return new Promise(function (resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "https://jira.fluidda.com/rest/userprojectrest/1/project");
+            //xhr.setRequestHeader("Authorization", headerValue);
+            xhr.setRequestHeader("Content-type", "application/json");
+            xhr.onload = resolve;
+            xhr.onerror = reject;
+            var body = {"user": [jiraUserName], "permissions": ["WORK_ON_ISSUES"]};
+            xhr.send(JSON.stringify(body));
+        }).then(function (e) {
+            console.debug('getJiraProjects success!');
+            //console.debug('getJiraProjects success!' + e.target.response);
+            return JSON.parse(e.target.response).tomvr
+        }, function (e) {
+            console.error('getJiraProjects error: ' + e);
+        }).then(function (projects) {
+            return projects.map(function (project) {
+                return {jiraId: project.id, key: project.key, name: project.name, order: 999, source:'+Jira+'};
+            });
         });
     });
 }
@@ -458,9 +514,7 @@ function setCurrentTask(entry) {
     projectElement.innerHTML = entry.project.name;
 
     var messageElement = document.getElementById('current');
-    if (entry.description) {
-        messageElement.value = entry.description;
-    }
+    messageElement.value = entry.description? entry.description: '';
 
     setCurrentTag(entry.tags);
 }
@@ -508,8 +562,19 @@ document.addEventListener('DOMContentLoaded', function () {
     var timerButton = document.getElementById('startTimer');
     timerButton.addEventListener('click', startTimer);
 
+    var descriptionElement = document.getElementById('current');
+    descriptionElement.addEventListener('blur', saveTaskDescription);
+
+    descriptionElement.addEventListener('focus', function (ev) {
+        var saveDescButton = document.getElementById('saveDesc');
+        saveDescButton.classList.remove('hidden');
+    });
+
     var saveTokenButton = document.getElementById('saveKey');
     saveTokenButton.addEventListener('click', saveApiToken);
+
+    var saveJiraUserNameButton = document.getElementById('saveJiraUsernameButton');
+    saveJiraUserNameButton.addEventListener('click', saveJiraUserName);
 
     refreshCurrentTimeEntry();
 
@@ -525,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function () {
             for (var i = 0; i < projects.length; i++) {
                 var option = document.createElement("option");
                 var projectId = projects[i].id ? projects[i].id : projects[i].key;
-                console.log(projectId);
+                //console.log(projectId);
                 option.value = projectId;
                 option.text = '['+projects[i].source+'] '+projects[i].name;
                 option.onclick = createOnClickOption(projectId);
@@ -545,5 +610,10 @@ document.addEventListener('DOMContentLoaded', function () {
             button.onclick = createOnClickTag(tags[i]);
             tagList.appendChild(button);
         }
+    });
+
+    getSavedJiraUserName().then(function (jiraUserName) {
+        var inputField = document.getElementById('jiraUserName');
+        inputField.value = jiraUserName;
     });
 });

@@ -9,11 +9,13 @@
     <title>Getting Started Extension's Popup</title>
       <link href="css/bootstrap.min.css" rel="stylesheet">
       <link href="css/custom.css" rel="stylesheet">
+      <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
       <style type="text/css">
       body {
         margin: 10px;
         white-space: nowrap;
+          min-width: 600px;
       }
 
       #container {
@@ -45,9 +47,13 @@
                 <div class="input-group">
                     <span id="currentProject" class="input-group-addon"></span>
                     <input type="text" class="form-control" placeholder="No description" id="current">
+                    <span class="input-group-btn width-min">
+                        <button class="btn btn-default hidden" type="submit" id="saveDesc">
+                            <span class="fa fa-save"></span>
+                        </button>
+                    </span>
                 </div>
                 <div style="padding-top: 5px;" class="btn-group btn-group-xs text-center" id="tagList"></div>
-
             </div>
         </div>
         <div class="panel panel-default">
@@ -67,11 +73,30 @@
         <div class="panel panel-info">
             <div class="panel-heading">Configuration</div>
             <div class="panel-body">
-                <div class="col-xs-11 col-xs-offset-1">
-                    <span>Toggl personal API key</span>
-                    <input type="text" name="personalApiKey" id="personalApiKey" placeholder="Paste key here..."/>
-                    <button id="saveKey">Save</button>
-                </div>
+                <form class="form-inline">
+                    <div class="form-group">
+                        <label for="personalApiKey">Toggl personal API key</label>
+                        <span class="input-group">
+                            <input type="text" class="form-control" name="personalApiKey" id="personalApiKey" placeholder="Paste key here..."/>
+                            <span class="input-group-btn width-min">
+                                <button class="btn btn-default" type="submit" id="saveKey">
+                                    <span class="fa fa-save"></span>
+                                </button>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="form-group">
+                        <label for="jiraUserName">Jira username</label>
+                        <span class="input-group">
+                            <input type="text" class="form-control" name="jiraUserName" id="jiraUserName" placeholder="username..."/>
+                            <span class="input-group-btn width-min">
+                                <button class="btn btn-default" type="submit" id="saveJiraUsernameButton">
+                                    <span class="fa fa-save"></span>
+                                </button>
+                            </span>
+                        </span>
+                    </div>
+                </form>
             </div>
         </div>
     </body>
