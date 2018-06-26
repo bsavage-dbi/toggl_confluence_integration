@@ -468,7 +468,7 @@ function getJiraProjects() {
         }).then(function (e) {
             console.debug('getJiraProjects success!');
             //console.debug('getJiraProjects success!' + e.target.response);
-            return JSON.parse(e.target.response).tomvr
+            return JSON.parse(e.target.response)[jiraUserName];
         }, function (e) {
             console.error('getJiraProjects error: ' + e);
         }).then(function (projects) {
