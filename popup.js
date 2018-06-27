@@ -602,27 +602,31 @@ function setCurrentTask(entry) {
 function setCurrentTag(tags) {
     if(tags && tags.length){
         console.log(tags);
-        var children = document.getElementById('tagList').children;
-        var foundTags = [];
-        for (var i = 0; i < children.length; i++) {
-            var child = children[i];
+        var tagMap = new Map(tags.map(function (tag) {
+            return [tag.toUpperCase(), tag];
+        }));
+        console.log(tagMap);
+        var buttons = document.getElementById('tagList').children;
+        for (var i = 0; i < buttons.length; i++) {
+            var button = buttons[i];
             // Do stuff
-            if(tags && tags.indexOf(child.innerHTML)!=-1){
-                child.classList.add("btn-info");
-                foundTags.push(child.innerHTML);
+            var key = button.innerText.toUpperCase();
+            var value = tagMap.get(key);
+            if(value){
+                button.classList.add("btn-info");
+                tagMap.delete(key);
             }else{
-                child.classList.remove("btn-info");
-                child.classList.add("btn-default");
+                console.log('not found: '+key);
+                button.classList.remove("btn-info");
+                button.classList.add("btn-default");
             }
         }
-        console.log(foundTags);
-        var notFoundTags = tags.filter(function(value){return -1 == foundTags.indexOf(value)});
-        console.log(notFoundTags);
-        for (var i = 0; i < notFoundTags.length; i++) {
-            var newChild = createTagButton(notFoundTags[i]);
-            newChild.classList.add("btn-info");
-            document.getElementById('tagList').appendChild(newChild);
-        }
+        console.log(tagMap);
+        tagMap.forEach(function(value, key, map){
+            var newButton = createTagButton(value);
+            newButton.classList.add("btn-info");
+            document.getElementById('tagList').appendChild(newButton);
+        });
     }
 }
 
