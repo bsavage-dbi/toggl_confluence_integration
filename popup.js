@@ -85,43 +85,46 @@ function saveToggleLabels() {
         });
 }
 
+function createToggleProject(projectName) {
+    var authorizationHeaderPromise = getTogglAuthorizationHeader();
+    var workspaceIdPromise = getWorkspaceId();
+
+    return Promise.all([authorizationHeaderPromise, workspaceIdPromise])
+        .then(function (values) {
+            console.log('Promises returned: ' + values);
+
+            var headerValue = values[0];
+            var wid = values[1];
+
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "https://www.toggl.com/api/v8/projects", true);
+                xhr.setRequestHeader("Authorization", headerValue);
+                xhr.setRequestHeader("Content-type", "application/json");
+                xhr.onload = resolve;
+                xhr.onerror = reject;
+                var body = {
+                    "project": {
+                        "name": projectName,
+                        "wid": wid,
+                    }
+                };
+                xhr.send(JSON.stringify(body));
+
+            }).then(function (e) {
+                console.log('createToggleProject success: ' + e.target.response);
+                return JSON.parse(e.target.response).data
+            }).catch(function (e) {
+                console.error('createToggleProject error: ' + e);
+            });
+
+        });
+}
+
 function getTogglProjectId(projectId) {
     if(isNaN(projectId)){
-        var jiraKey = projectId;
-        var authorizationHeaderPromise = getTogglAuthorizationHeader();
-        var workspaceIdPromise = getWorkspaceId();
-
-        return Promise.all([authorizationHeaderPromise, workspaceIdPromise])
-            .then(function (values) {
-                console.log('Promises returned: ' + values);
-
-                var headerValue = values[0];
-                var wid = values[1];
-
-                return new Promise(function (resolve, reject) {
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("POST", "https://www.toggl.com/api/v8/projects", true);
-                    xhr.setRequestHeader("Authorization", headerValue);
-                    xhr.setRequestHeader("Content-type", "application/json");
-                    xhr.onload = resolve;
-                    xhr.onerror = reject;
-                    var body = {
-                        "project": {
-                            "name": jiraKey,
-                            "wid": wid,
-                        }
-                    };
-                    xhr.send(JSON.stringify(body));
-
-                }).then(function (e) {
-                    console.log('toggle project creation success: ' + e.target.response);
-                    return JSON.parse(e.target.response).data
-                }).then(function (project) {
-                    return project.id;
-                }).catch(function (e) {
-                    console.error('toggle project creation error: ' + e);
-                });
-
+        return createToggleProject(projectId).then(function (project) {
+            return project.id;
         });
     }else{
         return Promise.resolve(projectId);
@@ -334,16 +337,16 @@ function lookUpProject() {
                         return currentProjectName.toLowerCase() == project.name.toLowerCase();
                     });
                 if (filtered.length == 0) {
-                    showMessage('No Project found in toggle with name: ' + currentProjectName);
-
-                    return Promise.reject(reason);
+                    return createToggleProject(currentProjectName).then(function (project) {
+                        return project.id;
+                    });
                 } else {
                     return filtered[0].id;
                 }
             }
             showMessage('Could not extract project name');
 
-            return Promise.reject(reason);
+            return Promise.reject('Could not extract project name');
         });
 }
 
