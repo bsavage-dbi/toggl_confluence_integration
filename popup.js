@@ -377,7 +377,6 @@ function lookUpProjectById(pid){
                 return JSON.parse(e.target.response).data;
             }).catch(function (e) {
                 console.error('lookUpProject error: ' + e);
-                return;
             });
         });
 }
@@ -439,7 +438,6 @@ function getCurrentTimeEntry() {
             return JSON.parse(e.target.response).data
         }).catch(function (e) {
             console.error('getCurrentTimeEntry error: ' + e);
-            return;
         });
 }
 
@@ -448,10 +446,15 @@ function getCurrentTimeEntryWithProject() {
 }
 
 function addProjectDetails(timeEntry) {
-    return lookUpProjectById(timeEntry.pid).then(function (project) {
-        timeEntry.project = project;
-        return timeEntry;
-    });
+    if(timeEntry && timeEntry.pid){
+        return lookUpProjectById(timeEntry.pid).then(function (project) {
+            timeEntry.project = project;
+            return timeEntry;
+        });
+    }else{
+        return;
+    }
+
 }
 
 function getWorkspaceId() {
@@ -571,9 +574,19 @@ function getSortedToggleProjects() {
 
             return Promise.all(projectNamePromises);
         }).then(function (toggleProjects) {
-            return toggleProjects.map(function (toggleProject, index){
-                return {id: toggleProject.id, name: toggleProject.name.toUpperCase(), order: index, source:'Toggle'};
-            })
+            console.info(toggleProjects);
+            return toggleProjects
+                .filter(function (value) {
+                    return value;
+                })
+                .map(function (toggleProject, index) {
+                    return {
+                        id: toggleProject.id,
+                        name: toggleProject.name.toUpperCase(),
+                        order: index,
+                        source: 'Toggle'
+                    };
+                })
         }).then(function (toggleProjects) {
             console.info('sorted toggle Projects:');
             console.info(toggleProjects);
@@ -590,13 +603,15 @@ function refreshCurrentTimeEntry() {
 }
 
 function setCurrentTask(entry) {
-    var projectElement = document.getElementById('currentProject');
-    projectElement.innerHTML = entry.project.name;
+    if(entry){
+        var projectElement = document.getElementById('currentProject');
+        projectElement.innerHTML = entry.project.name;
 
-    var messageElement = document.getElementById('current');
-    messageElement.value = entry.description? entry.description: '';
+        var messageElement = document.getElementById('current');
+        messageElement.value = entry.description? entry.description: '';
 
-    setCurrentTag(entry.tags);
+        setCurrentTag(entry.tags);
+    }
 }
 
 function setCurrentTag(tags) {
