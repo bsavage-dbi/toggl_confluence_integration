@@ -107,6 +107,7 @@ function createToggleProject(projectName) {
                     "project": {
                         "name": projectName,
                         "wid": wid,
+                        "is_private": false
                     }
                 };
                 xhr.send(JSON.stringify(body));
