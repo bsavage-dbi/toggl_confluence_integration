@@ -106,8 +106,8 @@ function createToggleProject(projectName) {
                 var body = {
                     "project": {
                         "name": projectName,
-                        "wid": wid,
-                        "is_private": false
+                        "wid": wid
+                        //,"is_private": false
                     }
                 };
                 xhr.send(JSON.stringify(body));
@@ -437,6 +437,13 @@ function getCurrentTimeEntry() {
         ).then(function (e) {
             console.log('getCurrentTimeEntry succes: ' + e.target.response);
             return JSON.parse(e.target.response).data
+        })
+        .then(function (entry) {
+            if (entry) {
+                var workspaceId = entry.wid;
+                chromep.storage.sync.set({"wid": workspaceId});
+            }
+            return entry;
         }).catch(function (e) {
             console.error('getCurrentTimeEntry error: ' + e);
         });
@@ -465,10 +472,8 @@ function getWorkspaceId() {
             return getCurrentTimeEntry()
                 .then(function (entry) {
                     if (entry) {
-                        var workspaceId = entry.wid;
-                        chromep.storage.sync.set({"wid": workspaceId});
+                        return entry.wid;
                     }
-                    return workspaceId;
                 });
         } else {
             //alert('Found in local storage')
