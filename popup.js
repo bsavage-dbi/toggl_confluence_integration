@@ -612,6 +612,7 @@ function setCurrentTask(entry) {
     if(entry){
         var projectElement = document.getElementById('currentProject');
         projectElement.innerHTML = entry.project.name;
+        projectElement.style.color = entry.project.hex_color;
 
         var messageElement = document.getElementById('current');
         messageElement.value = entry.description? entry.description: '';
